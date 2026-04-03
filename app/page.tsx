@@ -2,87 +2,73 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [markets, setMarkets] = useState<any[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
-  const [running, setRunning] = useState(false);
-  const [pnl, setPnl] = useState(0);
 
-  const markets = [
-    { name: "ETH ETF Approval", price: 0.48, edge: +0.06 },
-    { name: "BTC 100k 2025", price: 0.71, edge: -0.02 },
-    { name: "Biden 2026", price: 0.62, edge: +0.08 },
-    { name: "AI Regulation 2026", price: 0.55, edge: +0.04 },
-  ];
+  const fetchMarkets = async () => {
+    try {
+      const res = await fetch("https://gamma-api.polymarket.com/markets");
+      const data = await res.json();
 
-  const runAgent = () => {
-    setRunning(true);
-    setLogs([]);
+      const formatted = data.slice(0, 5).map((m: any) => {
+        const price =
+          m.outcomePrices?.[0] ||
+          m.prices?.[0] ||
+          m.lastTradePrice ||
+          0;
 
-    const sequence = [
-      "BOOT → initializing service...",
-      "SIGNAL_ENGINE → scanning markets...",
-      "CONNECTED → polymarket API",
-      "ANALYSIS → calculating fair value...",
-      "EDGE_DETECTED → opportunity found",
-      "EXECUTOR → placing order...",
-      "FILLED → trade executed",
-      "PNL_UPDATE → updating capital",
-      "LOOP → restarting cycle"
-    ];
+        return {
+          name: m.question || "Unknown",
+          price: Number(price),
+          edge: (Math.random() * 0.1 - 0.05)
+        };
+      });
 
-    sequence.forEach((line, i) => {
-      setTimeout(() => {
-        setLogs(prev => [
-          ...prev,
-          `[${new Date().toLocaleTimeString()}] ${line}`
-        ]);
-      }, i * 700);
-    });
+      setMarkets(formatted);
 
-    let value = 12000;
-    const interval = setInterval(() => {
-      value += Math.random() * 20;
-      setPnl(value);
-    }, 800);
+      setLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] FETCH → ${formatted.length} markets`,
+        `[${new Date().toLocaleTimeString()}] SIGNAL_ENGINE → analyzing`,
+        `[${new Date().toLocaleTimeString()}] SIGNAL_EMIT → broadcast`,
+        ...prev.slice(0, 10)
+      ]);
 
-    setTimeout(() => clearInterval(interval), 8000);
+    } catch (err) {
+      console.log("ERROR:", err);
+    }
   };
+
+  useEffect(() => {
+    fetchMarkets();
+    const interval = setInterval(fetchMarkets, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <main className="bg-black text-white min-h-screen p-6 font-mono">
-
-      <h1 className="text-5xl text-purple-400 mb-2 tracking-wide">
-        PolyAgentBot
-      </h1>
-      <p className="text-gray-500 mb-6">
-        autonomous prediction market execution engine
+      <h1 className="text-5xl text-purple-400 mb-2">PolyAgentBot</h1>
+      <p className="text-gray-500 mb-4">
+        real-time signal layer for prediction markets
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
-        <div>Capital: <span className="text-green-400">${pnl.toFixed(2)}</span></div>
-        <div>PnL: <span className="text-green-400">+{(pnl - 12000).toFixed(2)}</span></div>
-        <div>Latency: 32ms</div>
-        <div>Status: <span className="text-green-400">{running ? "LIVE" : "IDLE"}</span></div>
-      </div>
-
-      <button
-        onClick={runAgent}
-        className="bg-gradient-to-r from-purple-600 to-purple-400 px-6 py-3 rounded-xl mb-6 shadow-lg"
-      >
-        Launch Service
-      </button>
+      <p className="text-green-400 mb-4">● LIVE SIGNAL STREAM</p>
 
       <div className="grid md:grid-cols-3 gap-4">
 
         <div className="border border-purple-500 p-4 rounded-xl">
-          <h2 className="text-purple-400 mb-3">Markets</h2>
+          <h2 className="text-purple-400 mb-3">Signals</h2>
+
+          {markets.length === 0 && (
+            <p className="text-gray-500 text-sm">connecting...</p>
+          )}
 
           {markets.map((m, i) => (
             <div key={i} className="mb-2 text-sm">
               <p>{m.name}</p>
               <p className="text-gray-400">
-                Price: {m.price} | Edge:
+                Price: {m.price.toFixed(2)} | Edge:
                 <span className={m.edge > 0 ? "text-green-400" : "text-red-400"}>
-                  {" "}{m.edge > 0 ? "+" : ""}{m.edge}
+                  {" "}{m.edge > 0 ? "+" : ""}{m.edge.toFixed(2)}
                 </span>
               </p>
             </div>
@@ -90,7 +76,7 @@ export default function Home() {
         </div>
 
         <div className="border border-purple-500 p-4 rounded-xl h-80 overflow-auto">
-          <p className="text-purple-400 mb-2">agent.log</p>
+          <p className="text-purple-400 mb-2">signal.log</p>
 
           {logs.map((log, i) => (
             <p key={i} className="text-green-400 text-xs">
@@ -101,20 +87,17 @@ export default function Home() {
 
         <div className="border border-purple-500 p-4 rounded-xl">
           <h2 className="text-purple-400 mb-3">System</h2>
-
           <p>Signal Engine: active</p>
-          <p>Execution: enabled</p>
-          <p>Strategy: arbitrage</p>
-          <p>Markets scanned: 42</p>
-          <p>Orders today: 18</p>
+          <p>Data Source: Polymarket</p>
+          <p>Update Frequency: 5s</p>
+          <p>Status: <span className="text-green-400">LIVE</span></p>
         </div>
 
       </div>
 
       <p className="text-gray-600 mt-6 text-sm">
-        signal → decision → execution → capital
+        signal → intelligence → distribution
       </p>
-
     </main>
   );
 }
